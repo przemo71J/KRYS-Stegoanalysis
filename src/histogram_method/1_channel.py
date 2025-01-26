@@ -7,36 +7,61 @@ def calculate_histogram(image):
     histogram, bins = np.histogram(image.flatten(), bins=256, range=[0, 256])
     return histogram
 
-def plot_histogram(histogram, title, filename):
-    output_dir = os.path.dirname(filename)
-    os.makedirs(output_dir, exist_ok=True)
+def plot_histograms_9(original_histograms, stego_histograms, diffs, img_name, save_path=None):
 
-    plt.figure(figsize=(8, 6))
-    plt.bar(range(256), histogram, color='red')
-    plt.title(title)
-    plt.xlabel('Intensywność pikseli')
-    plt.ylabel('Liczba wystąpień')
+    methods = ['LSB', 'RGBA', 'DCT']
+    color='darkorange'
+    fig, axes = plt.subplots(3, 3, figsize=(15, 15))
+    fig.suptitle(f"Histogramy dla obrazu: {img_name}", fontsize=16)  # Global title
 
-    plt.savefig(filename)
+    for i, method in enumerate(methods):
+        # Original histogram
+        axes[i, 0].bar(range(256), original_histograms[i], color=color)
+        axes[i, 0].set_title(f'Oryginalny - {method}')
+        axes[i, 0].set_xlabel('Intensywność pikseli')
+        axes[i, 0].set_ylabel('Liczba wystąpień')
+
+        # Stego histogram
+        axes[i, 1].bar(range(256), stego_histograms[i], color=color)
+        axes[i, 1].set_title(f'Stego - {method}')
+        axes[i, 1].set_xlabel('Intensywność pikseli')
+        axes[i, 1].set_ylabel('Liczba wystąpień')
+
+        # Difference histogram
+        axes[i, 2].bar(range(256), diffs[i], color=color)
+        axes[i, 2].set_title(f'Różnica - {method}')
+        axes[i, 2].set_xlabel('Intensywność pikseli')
+        axes[i, 2].set_ylabel('Liczba wystąpień')
+
+    plt.tight_layout(rect=[0, 0, 1, 0.96])  # Adjust layout for global title
+    if save_path:
+        plt.savefig(save_path)
+    else:
+        plt.show()
+
     plt.close()
 
-def detect_stego_changes(original_image, stego_image, method, img_name):
+def detect_stego_changes_9(original_image, stego_images, img_name):
     base_save_dir = os.path.join(images_dir, "histogram_images_gray")
-    save_dir = os.path.join(base_save_dir, img_name, method)
+    save_dir = os.path.join(base_save_dir, img_name)
     os.makedirs(save_dir, exist_ok=True)
 
-    original_histogram = calculate_histogram(original_image)
-    stego_histogram = calculate_histogram(stego_image)
+    original_histograms = []
+    stego_histograms = []
+    diffs = []
 
-    diff = np.abs(original_histogram - stego_histogram)
+    methods = ['lsb', 'rgba', 'dct']
+    for method, stego_image in zip(methods, stego_images):
+        original_histogram = calculate_histogram(original_image)
+        stego_histogram = calculate_histogram(stego_image)
+        diff = np.abs(original_histogram - stego_histogram)
 
-    original_hist_filename = os.path.join(save_dir, f"{img_name}_original_histogram.png")
-    stego_hist_filename = os.path.join(save_dir, f"{img_name}_stego_histogram.png")
-    diff_hist_filename = os.path.join(save_dir, f"{img_name}_difference_histogram.png")
+        original_histograms.append(original_histogram)
+        stego_histograms.append(stego_histogram)
+        diffs.append(diff)
 
-    plot_histogram(original_histogram, f'Histogram obrazu oryginalnego - {img_name}', original_hist_filename)
-    plot_histogram(stego_histogram, f'Histogram obrazu z ukrytymi danymi - {img_name}', stego_hist_filename)
-    plot_histogram(diff, f'Różnica między histogramami - {img_name}', diff_hist_filename)
+    hist_filename = os.path.join(save_dir, f"{img_name}_combined_histograms.png")
+    plot_histograms_9(original_histograms, stego_histograms, diffs, img_name, hist_filename)
 
 # Directories setup
 current_dir = os.path.dirname(os.path.abspath(__file__))
@@ -45,16 +70,22 @@ original_images_dir = os.path.join(images_dir, "original_images")
 
 methods = ['lsb', 'rgba', 'dct']
 
-# Loop through images
 for img in os.listdir(original_images_dir):
     if img.endswith(('.png', '.jpg', '.jpeg')):
+        original_image = cv2.imread(os.path.join(original_images_dir, img), cv2.IMREAD_GRAYSCALE)
+        stego_images = []
+
         for method in methods:
-            original_image = cv2.imread(os.path.join(original_images_dir, img), cv2.IMREAD_GRAYSCALE)
             stego_image_dir = os.path.join(images_dir, f"{method}_images")
             stego_filename = os.path.join(stego_image_dir, img)
             stego_image = cv2.imread(stego_filename, cv2.IMREAD_GRAYSCALE)
-
-            if original_image is not None and stego_image is not None:
-                detect_stego_changes(original_image, stego_image, method, img.split('.')[0])
+            if stego_image is not None:
+                stego_images.append(stego_image)
             else:
-                print(f"Warning: Could not load image pair for {img} with method {method}.")
+                print(f"Warning: Could not load stego image for {img} with method {method}.")
+                break
+
+        if original_image is not None and len(stego_images) == len(methods):
+            detect_stego_changes_9(original_image, stego_images, img.split('.')[0])
+        else:
+            print(f"Warning: Could not load all image pairs for {img}.")
