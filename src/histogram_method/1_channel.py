@@ -53,8 +53,11 @@ def detect_stego_changes_9(original_image, stego_images, img_name):
     methods = ['lsb', 'rgba', 'dct']
     for method, stego_image in zip(methods, stego_images):
         original_histogram = calculate_histogram(original_image)
+        print("Original histogram:\n",original_histogram)
         stego_histogram = calculate_histogram(stego_image)
+        print("Stego histogram:\n",stego_histogram)
         diff = np.abs(original_histogram - stego_histogram)
+        print("Difference:\n",diff)
 
         original_histograms.append(original_histogram)
         stego_histograms.append(stego_histogram)
