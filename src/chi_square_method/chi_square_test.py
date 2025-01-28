@@ -24,8 +24,7 @@ def plot_difference_histograms(original_image, stego_images, methods, img_name):
     
     for ax, method, stego_image in zip(axes, methods, stego_images):
         diff_image = (original_image.astype(np.int16) - stego_image.astype(np.int16))
-        print(diff_image)
-        ax.hist(diff_image.flatten(), bins=512, range=[-256, 256], color='r', alpha=0.7)
+        ax.hist(diff_image.flatten(), bins=512, range=[-5, 5], color='r', alpha=0.7)
         ax.set_title(f'Difference Histogram ({method})')
         ax.set_xlabel('Pixel Intensity Difference')
         ax.set_ylabel('Frequency')
